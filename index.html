@@ -29,172 +29,22 @@
             </div>
             <div class="sidebar-right">
                 <div id="formattingTools">
-                    <button onclick="makeHeader()">Make Header</button>
-                    <button onclick="makeCodeBlock()">Make Codeblock</button>
+                    <button id="headerBtn">Make Header</button>
+                    <button id="codeBtn">Make Codeblock</button>
                 </div>
             </div>
         </div>
 
-        <script>
+        <script type="module">
+            import { makeHeader, makeCodeBlock } from '../scripts/actions.js';
+            import { updateJSON } from '../scripts/parser.js';
 
-            function ensureTrailingLine() {
-                const editor = document.getElementById("editor");
-                const last = editor.lastChild;
-
-                // If there's no last child or it's not an empty paragraph, add one
-                if (!last || !(last.nodeName === "P" && last.innerText.trim() === "")) {
-                    const p = document.createElement("p");
-                    p.innerHTML = "<br>"; // ensures caret can go inside
-                    editor.appendChild(p);
-                }
-            }
-
-
-            function getCurrentBlockSelection(){
-                const sel = window.getSelection();
-                if (!sel.rangeCount) return null;
-
-                const node = sel.anchorNode;
-                let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
-
-                while (el && el.id !== "editor") {
-                    if (el.nodeName === "P" || el.nodeName === "H2" || el.nodeName === "PRE" || el.nodeName === "DIV") return { sel, el };
-                    el = el.parentNode;
-                }
-            }
-
-            function replaceBlock(el, newEl, sel) {
-                el.replaceWith(newEl);
-
-                const range = document.createRange();
-                range.setStartAfter(newEl);
-                range.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(range);
-
-                updateJSON();
-            }
-
-            function makeHeader() {
-                const result = getCurrentBlockSelection();
-                if (!result) return;
-                const { sel, el } = result;
-
-                if (el.nodeName === "H2") { updateJSON(); return; }
-
-                const h = document.createElement("h2");
-                h.textContent = el.innerText.trim();
-                
-                replaceBlock(el, h, sel);
-            }
-
-            function makeCodeBlock() {
-                const result = getCurrentBlockSelection();
-                if (!result) return;
-                const { sel, el } = result;
-
-                const pre = document.createElement("pre");
-                const code = document.createElement("code");
-                code.textContent = el.innerText.trim();
-                pre.appendChild(code);
-
-                replaceBlock(el, pre, sel);
-            }
-
-            function nearestBlockElement(node) {
-                let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
-                while (el && el.id !== "editor") {
-                    if (el.nodeName === "P" || el.nodeName === "H2") return el;
-                    el = el.parentNode;
-                }
-                return null;
-            }
-
-            // --- Helpers like your original ---
-            function isHeader(node) { return node.nodeName === "H2"; }
-            function isParagraph(node) { return node.nodeName === "P"; }
-            function isCode(node) { return node.nodeName === "PRE" && node.querySelector("code");}
-
-            // Your original parser logic
-            function parseBlocks(editor) {
-
-                const blocks = [];
-
-                let currentBlock = null;
-                let currentParagraph = null;
-
-                editor.childNodes.forEach(node => {
-
-                    if (isHeader(node)) {
-
-                        currentParagraph = null;
-                        currentBlock = { type: "header", content: node.innerText.trim(), paragraphs: [] };
-                        blocks.push(currentBlock);
-
-                    } else if (isParagraph(node) || node.nodeName === "DIV" || node.nodeType === Node.TEXT_NODE) {
-                        
-                        const text = node.nodeType === Node.TEXT_NODE ? (node.textContent || "").trim() : node.innerText.trim();
-                        if (!text) return;
-
-                        if (!currentBlock) {
-                            currentBlock = { type: "standalone", paragraphs: [] };
-                            blocks.push(currentBlock);
-                        }
-
-                        currentBlock.paragraphs.push(text);
-
-                    } else if (isCode(node)) {
-                        const codeEl = node.querySelector("code");
-                        const codeText = codeEl.innerText.trim();
-                        if (codeText) {
-                            blocks.push ({ type: "code", content: codeText});
-                        }
-                        currentBlock = null;
-                    }
-
-                });
-
-                return blocks;
-
-            }
-
-            function updateJSON() {
-                const editor = document.getElementById("editor");
-                const blocks = parseBlocks(editor);
-                document.getElementById("jsonOutput").textContent = JSON.stringify(blocks, null, 2);
-            
-                ensureTrailingLine();
-            }
-
-            // live updates
-            document.getElementById("editor").addEventListener("input", updateJSON);
+            document.getElementById('headerBtn').addEventListener('click', makeHeader);
+            document.getElementById('codeBtn').addEventListener('click', makeCodeBlock);
+            document.getElementById('editor').addEventListener('input', updateJSON);
             updateJSON();
-
         </script>
 
     </body>
     
 </html>
-
-<style>
-
-    textarea{
-        width:100%;
-    }
-
-    pre {
-  background-color: #2d2d2d;   /* dark background */
-  color: #f8f8f2;              /* light text */
-  padding: 12px;
-  border-radius: 6px;
-  overflow-x: auto;            /* scroll if too wide */
-  font-family: "Courier New", monospace;
-  font-size: 14px;
-}
-
-pre code {
-  display: block;
-  white-space: pre;            /* preserve spacing */
-}
-
-</style>
