@@ -6,6 +6,8 @@ export function makeHeader() {
     if (!result) return;
     const { sel, el } = result;
 
+    if (!document.getElementById('editor').contains(el)) return;
+
     if (el.nodeName === "H2") { 
         updateJSON(); 
         return; 
@@ -22,6 +24,8 @@ export function makeCodeBlock() {
     const result = getCurrentBlockSelection();
     if (!result) return;
     const { sel, el } = result;
+
+    if (!document.getElementById('editor').contains(el)) return;
 
     const pre = document.createElement("pre");
     const code = document.createElement("code");

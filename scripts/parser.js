@@ -37,9 +37,12 @@ export function parseBlocks(editor) {
             const codeEl = node.querySelector("code");
             const codeText = codeEl ? codeEl.innerText.trim() : "";
             if (codeText) {
-                blocks.push ({ type: "code", content: codeText});
+                if (!currentBlock) {
+                    currentBlock = { type: "standalone", paragraphs: [] };
+                    blocks.push(currentBlock);
+                }
+                currentBlock.paragraphs.push({ type: "code", content: codeText });
             }
-            currentBlock = null;
         }
 
     });

@@ -39,6 +39,32 @@
             import { makeHeader, makeCodeBlock } from '../scripts/actions.js';
             import { updateJSON } from '../scripts/parser.js';
 
+            document.getElementById('editor').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault();
+
+                    const sel = window.getSelection();
+                    if (!sel.rangeCount) return;
+
+                    const range = sel.getRangeAt(0);
+                    range.deleteContents();
+
+                    const br = document.createElement('br');
+                    const zwsp = document.createTextNode('\u200B'); // zero-width space
+
+                    const frag = document.createDocumentFragment();
+                    frag.appendChild(br);
+                    frag.appendChild(zwsp);
+
+                    range.insertNode(frag);
+                    range.setStartAfter(zwsp);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            });
+
+
             document.getElementById('headerBtn').addEventListener('click', makeHeader);
             document.getElementById('codeBtn').addEventListener('click', makeCodeBlock);
             document.getElementById('editor').addEventListener('input', updateJSON);

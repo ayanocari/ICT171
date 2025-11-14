@@ -30,6 +30,8 @@ export function getCurrentBlockSelection(){
         if (el.nodeName === "P" || el.nodeName === "H2" || el.nodeName === "PRE" || el.nodeName === "DIV") return { sel, el };
         el = el.parentNode;
     }
+
+    return null;
 }
 
 export function replaceBlock(el, newEl, sel) {
