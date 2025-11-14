@@ -6,43 +6,195 @@
 		<link rel="stylesheet" href="global.css">
 	</head>
 
-	<body>
+    <body>
 
-		<div class="header">
+        <div class="header">
 
-				<h1 class="title">Aya Nocari ICT171 Project Proposal</h1>
-				<h4>Student ID: 35378704</h2>
+            <h3>Blog writer</h3>
 
-		</div>
+        </div>
 
-		<div class="main">
+        <div class="main">
+            <div class="sidebar-left"></div>
+            <div class="content">
 
-			<div class="sidebar-right"></div>
+                <h2>Editor</h2>
+                <div id="editor" contenteditable="true">
+                    <p>Type here</p>
+                </div> 
 
-			<div class="content">
+                <h2>JSON Output</h2>
+                <pre id="jsonOutput"></pre>
 
-				<div class="block">
-					<h3>Project Description</h3>
-					<p>This project is a blog platform built around the principles of openness, creativity, and clarity. It uses JSON as the foundation for storing and rendering content, treating each post as structured data that is easy to manage, share, and evolve. The goal is to make publishing bother powerful and accessible. The front-end editor is designed to be intuitive and expressive. It draws inspiration from tools like Notion, allowing writers to organize their thoughts with headings, groupings, and clean formatting. In addition to standard text blocks, the editor supports embedded iframes, custom HTML, and JavaScript boxes. This gives creators the freedom to include interactive elements, visualizations, or live demos directly in their posts. Every piece of content is translated into JSON, capturing structure, layout, and embedded features. This ensures that the site can render posts and dynamically and consistently. It also opens the door to future enhancements like collaboration, version control, and API integration. The platform is built to encourage open communication and the free exchange of information. Writers are invited to share knowledge and ideas in a space that values transparency and thoughtful expression. Whether they're publishing tutorials, showcasing creative work, or exploring new concepts, this site is meant to support and amplify your voice.</p>
-				</div>
-				
-				<div class="block">
-				<h3>License Rationale</h3>
-				<p>For this project, I decided to go for the GNU GPLv3.0 license for its flexibility while promoting ethicality and integrity. I place a huge emphasis on open, free information and the reliability of data. These values should be reflected in all content, especially my own. By adopting GNU's license, I help propagate a mindset of transparency and shared knowledge. Because of its copyleft clause, I ensure that any derivative works must use the same license, reinforcing the accountability and openness. I believe that ethical development means empowering others to learn, build, and contribute freely, without barriers and  GNU's GPL license fully embodies this philosophy.</p>
-				</div>	
-				
-			</div>
+            </div>
+            <div class="sidebar-right">
+                <div id="formattingTools">
+                    <button onclick="makeHeader()">Make Header</button>
+                    <button onclick="makeCodeBlock()">Make Codeblock</button>
+                </div>
+            </div>
+        </div>
 
-			<div class="sidebar-left"></div>
+        <script>
 
-		</div>
-		
-		<div class="footer">
+            function ensureTrailingLine() {
+                const editor = document.getElementById("editor");
+                const last = editor.lastChild;
 
-			<h3>GNU GPLv3 License</h3>
-			<p>This website includes software licensed under the GNU General Public License. You are free to use, modify, and redistribute it under the terms of the GPL v3.0. To read the full license, <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">click here.</p>
-		
-		</div>
+                // If there's no last child or it's not an empty paragraph, add one
+                if (!last || !(last.nodeName === "P" && last.innerText.trim() === "")) {
+                    const p = document.createElement("p");
+                    p.innerHTML = "<br>"; // ensures caret can go inside
+                    editor.appendChild(p);
+                }
+            }
 
-	</body>
+
+            function getCurrentBlockSelection(){
+                const sel = window.getSelection();
+                if (!sel.rangeCount) return null;
+
+                const node = sel.anchorNode;
+                let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+
+                while (el && el.id !== "editor") {
+                    if (el.nodeName === "P" || el.nodeName === "H2" || el.nodeName === "PRE" || el.nodeName === "DIV") return { sel, el };
+                    el = el.parentNode;
+                }
+            }
+
+            function replaceBlock(el, newEl, sel) {
+                el.replaceWith(newEl);
+
+                const range = document.createRange();
+                range.setStartAfter(newEl);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+
+                updateJSON();
+            }
+
+            function makeHeader() {
+                const result = getCurrentBlockSelection();
+                if (!result) return;
+                const { sel, el } = result;
+
+                if (el.nodeName === "H2") { updateJSON(); return; }
+
+                const h = document.createElement("h2");
+                h.textContent = el.innerText.trim();
+                
+                replaceBlock(el, h, sel);
+            }
+
+            function makeCodeBlock() {
+                const result = getCurrentBlockSelection();
+                if (!result) return;
+                const { sel, el } = result;
+
+                const pre = document.createElement("pre");
+                const code = document.createElement("code");
+                code.textContent = el.innerText.trim();
+                pre.appendChild(code);
+
+                replaceBlock(el, pre, sel);
+            }
+
+            function nearestBlockElement(node) {
+                let el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+                while (el && el.id !== "editor") {
+                    if (el.nodeName === "P" || el.nodeName === "H2") return el;
+                    el = el.parentNode;
+                }
+                return null;
+            }
+
+            // --- Helpers like your original ---
+            function isHeader(node) { return node.nodeName === "H2"; }
+            function isParagraph(node) { return node.nodeName === "P"; }
+            function isCode(node) { return node.nodeName === "PRE" && node.querySelector("code");}
+
+            // Your original parser logic
+            function parseBlocks(editor) {
+
+                const blocks = [];
+
+                let currentBlock = null;
+                let currentParagraph = null;
+
+                editor.childNodes.forEach(node => {
+
+                    if (isHeader(node)) {
+
+                        currentParagraph = null;
+                        currentBlock = { type: "header", content: node.innerText.trim(), paragraphs: [] };
+                        blocks.push(currentBlock);
+
+                    } else if (isParagraph(node) || node.nodeName === "DIV" || node.nodeType === Node.TEXT_NODE) {
+                        
+                        const text = node.nodeType === Node.TEXT_NODE ? (node.textContent || "").trim() : node.innerText.trim();
+                        if (!text) return;
+
+                        if (!currentBlock) {
+                            currentBlock = { type: "standalone", paragraphs: [] };
+                            blocks.push(currentBlock);
+                        }
+
+                        currentBlock.paragraphs.push(text);
+
+                    } else if (isCode(node)) {
+                        const codeEl = node.querySelector("code");
+                        const codeText = codeEl.innerText.trim();
+                        if (codeText) {
+                            blocks.push ({ type: "code", content: codeText});
+                        }
+                        currentBlock = null;
+                    }
+
+                });
+
+                return blocks;
+
+            }
+
+            function updateJSON() {
+                const editor = document.getElementById("editor");
+                const blocks = parseBlocks(editor);
+                document.getElementById("jsonOutput").textContent = JSON.stringify(blocks, null, 2);
+            
+                ensureTrailingLine();
+            }
+
+            // live updates
+            document.getElementById("editor").addEventListener("input", updateJSON);
+            updateJSON();
+
+        </script>
+
+    </body>
+    
 </html>
+
+<style>
+
+    textarea{
+        width:100%;
+    }
+
+    pre {
+  background-color: #2d2d2d;   /* dark background */
+  color: #f8f8f2;              /* light text */
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;            /* scroll if too wide */
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+}
+
+pre code {
+  display: block;
+  white-space: pre;            /* preserve spacing */
+}
+
+</style>
